@@ -5,7 +5,7 @@ import {ICToken} from "./interfaces/ICToken.sol";
 import {IWrappedToken} from "./interfaces/IWrappedToken.sol";
 
 contract SZap {
-    IWrappedToken public immutable wS; // EchoesZap governance address for approving `_swapTarget` inputs
+    IWrappedToken public immutable wS;
     ICToken public immutable underlyingCToken;
 
     event ZapIn(address user, uint256 amount);
