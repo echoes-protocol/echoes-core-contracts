@@ -8,6 +8,8 @@ contract SZap {
     IWrappedToken public immutable wS;
     ICToken public immutable underlyingCToken;
 
+    uint256 constant expScale = 1e18;
+
     event ZapIn(address user, uint256 amount);
     event ZapOut(address user, uint256 amount);
 
@@ -52,9 +54,9 @@ contract SZap {
 
         uint256 exchangeRate = underlyingCToken.exchangeRateStored();
 
-        uint256 cTokenAmount = redeemAmount / exchangeRate;
+        uint256 redeemTokens = redeemAmount  * expScale / exchangeRate;
 
-        underlyingCToken.transferFrom(msg.sender, address(this), cTokenAmount);
+        underlyingCToken.transferFrom(msg.sender, address(this), redeemTokens);
 
         uint256 success = underlyingCToken.redeemUnderlying(redeemAmount);
 
