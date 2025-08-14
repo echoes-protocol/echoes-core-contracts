@@ -33,7 +33,9 @@ contract SZap {
 
         uint256 cTokenBalanceBefore = underlyingCToken.balanceOf(address(this));
 
-        underlyingCToken.mint(_amount);
+        uint256 success = underlyingCToken.mint(_amount);
+
+        require(success == 0, "Failed to mint cTokens");
 
         uint256 receivedCToken = underlyingCToken.balanceOf(address(this)) -
             cTokenBalanceBefore;
@@ -59,7 +61,7 @@ contract SZap {
         uint256 receivedCToken = wS.balanceOf(address(this)) - initialBalance;
 
         if (success != 0 || receivedCToken != redeemAmount) {
-            revert("Failed to receive tokens");
+            revert("Failed to receive cTokens");
         }
 
         _performZapOut(redeemAmount);
@@ -83,9 +85,11 @@ contract SZap {
 
         wS.approve(address(underlyingCToken), msg.value);
 
-        underlyingCToken.repayBorrowBehalf(msg.sender, repayAmount);
+        uint256 success = underlyingCToken.repayBorrowBehalf(msg.sender, repayAmount);
 
-        emit RepayBorrow(msg.sender, msg.sender, repayAmount);
+        require(success == 0, "Failed to reapy borrow");
+
+        emit RepayBorrow(msg.sender, msg.sender, msg.value);
 
         return uint(ICToken.Error.NO_ERROR);
     }
