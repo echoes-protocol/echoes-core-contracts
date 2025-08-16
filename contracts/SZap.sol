@@ -13,9 +13,8 @@ contract SZap {
     event ZapIn(address user, uint256 amount);
     event ZapOut(address user, uint256 amount);
 
-    event Mint(address minter, uint mintAmount);
-    event Redeem(address redeemer, uint redeemAmount);
-    event RepayBorrow(address payer, address borrower, uint repayAmount);
+    event Mint(address minter, uint mintAmount, uint mintTokens);
+    event RepayBorrow(address payer, address borrower, uint repayAmount, uint accountBorrows, uint totalBorrows);
 
     constructor(address _wS, address _underlyingCToken) {
         wS = IWrappedToken(_wS);
@@ -44,33 +43,7 @@ contract SZap {
 
         underlyingCToken.transfer(msg.sender, receivedCToken);
 
-        emit Mint(msg.sender, _amount);
-
-        return uint(ICToken.Error.NO_ERROR);
-    }
-
-    function redeemUnderlying(uint redeemAmount) external returns (uint) {
-        uint256 initialBalance = wS.balanceOf(address(this));
-
-        uint256 exchangeRate = underlyingCToken.exchangeRateStored();
-
-        uint256 redeemTokens = redeemAmount  * expScale / exchangeRate;
-
-        underlyingCToken.transferFrom(msg.sender, address(this), redeemTokens);
-
-        uint256 success = underlyingCToken.redeemUnderlying(redeemAmount);
-
-        uint256 receivedCToken = wS.balanceOf(address(this)) - initialBalance;
-
-        if (success != 0 || receivedCToken != redeemAmount) {
-            revert("Failed to receive cTokens");
-        }
-
-        _performZapOut(redeemAmount);
-
-        payable(msg.sender).transfer(redeemAmount);
-
-        emit Redeem(msg.sender, redeemAmount);
+        emit Mint(msg.sender, _amount, receivedCToken);
 
         return uint(ICToken.Error.NO_ERROR);
     }
@@ -91,7 +64,11 @@ contract SZap {
 
         require(success == 0, "Failed to reapy borrow");
 
-        emit RepayBorrow(msg.sender, msg.sender, msg.value);
+        uint256 totalBorrows = underlyingCToken.totalBorrows();
+
+        uint256 accountBorrowsNew = underlyingCToken.borrowBalanceStored(msg.sender);
+
+        emit RepayBorrow(msg.sender, msg.sender, msg.value, accountBorrowsNew, totalBorrows);
 
         return uint(ICToken.Error.NO_ERROR);
     }

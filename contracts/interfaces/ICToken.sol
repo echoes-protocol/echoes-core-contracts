@@ -22,4 +22,6 @@ interface ICToken {
     function exchangeRateStored() external view returns (uint);
 
     function borrowBalanceStored(address account) external view returns (uint);
+
+    function totalBorrows() external view returns (uint);
 }
