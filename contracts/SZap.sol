@@ -50,17 +50,20 @@ contract SZap {
 
     function repayBorrow(uint repayAmount) external payable returns (uint) {
         uint256 surplusTokens;
+        uint256 zapAmount;
         if(repayAmount == type(uint256).max) {
             uint256 accountBorrows = borrowBalanceStored(msg.sender);
             require(msg.value > 0 && msg.value >= accountBorrows, "Invalid amount");
             surplusTokens = msg.value - accountBorrows;
+            zapAmount = accountBorrows;
         } else {
             require(msg.value > 0 && msg.value == repayAmount, "Invalid amount");
+            zapAmount = repayAmount;
         }
 
-        _performZapIn(msg.value);
+        _performZapIn(zapAmount);
 
-        wS.approve(address(underlyingCToken), msg.value);
+        wS.approve(address(underlyingCToken), zapAmount);
 
         uint256 success = underlyingCToken.repayBorrowBehalf(msg.sender, repayAmount);
 
