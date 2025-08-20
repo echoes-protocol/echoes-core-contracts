@@ -51,7 +51,7 @@ contract SZap {
     function repayBorrow(uint repayAmount) external payable returns (uint) {
         uint256 surplusTokens;
         if(repayAmount == type(uint256).max) {
-            uint256 accountBorrows = underlyingCToken.borrowBalanceStored(msg.sender);
+            uint256 accountBorrows = borrowBalanceStored(msg.sender);
             require(msg.value > 0 && msg.value >= accountBorrows, "Invalid amount");
             surplusTokens = msg.value - accountBorrows;
         } else {
@@ -68,7 +68,7 @@ contract SZap {
 
         uint256 totalBorrows = underlyingCToken.totalBorrows();
 
-        uint256 accountBorrowsNew = underlyingCToken.borrowBalanceStored(msg.sender);
+        uint256 accountBorrowsNew = borrowBalanceStored(msg.sender);
 
         if(surplusTokens > 0) {
             payable(msg.sender).transfer(surplusTokens);
@@ -77,6 +77,15 @@ contract SZap {
         emit RepayBorrow(msg.sender, msg.sender, msg.value, accountBorrowsNew, totalBorrows);
 
         return uint(ICToken.Error.NO_ERROR);
+    }
+
+    /**
+     * @notice Return the borrow balance of account based on stored data
+     * @param account The address whose balance should be calculated
+     * @return The calculated balance
+     */
+    function borrowBalanceStored(address account) public view returns (uint) {
+        return underlyingCToken.borrowBalanceStored(account);
     }
 
     function _performZapIn(uint256 _amount) internal {
