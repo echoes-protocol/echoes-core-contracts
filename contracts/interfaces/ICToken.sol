@@ -17,6 +17,10 @@ interface ICToken {
 
     function transferFrom(address src, address dst, uint256 amount) external returns (bool);
 
+    function accrueInterest() external returns (uint);
+
+    function borrowBalanceCurrent(address account) external returns (uint);
+
     function balanceOf(address owner) external view returns (uint256);
 
     function exchangeRateStored() external view returns (uint);

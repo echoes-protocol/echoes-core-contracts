@@ -3,10 +3,12 @@ pragma solidity ^0.8.0;
 
 import {ICToken} from "./interfaces/ICToken.sol";
 import {IWrappedToken} from "./interfaces/IWrappedToken.sol";
+import {IComptroller} from "./interfaces/IComptroller.sol";
 
 contract SZap {
     IWrappedToken public immutable wS;
     ICToken public immutable underlyingCToken;
+    IComptroller public immutable comptroller;
 
     uint256 constant expScale = 1e18;
 
@@ -16,9 +18,10 @@ contract SZap {
     event Mint(address minter, uint mintAmount, uint mintTokens);
     event RepayBorrow(address payer, address borrower, uint repayAmount, uint accountBorrows, uint totalBorrows);
 
-    constructor(address _wS, address _underlyingCToken) {
+    constructor(address _wS, address _underlyingCToken, address _comptroller) {
         wS = IWrappedToken(_wS);
         underlyingCToken = ICToken(_underlyingCToken);
+        comptroller = IComptroller(_comptroller);
     }
 
     /**
@@ -52,8 +55,24 @@ contract SZap {
         uint256 surplusTokens;
         uint256 zapAmount;
         if(repayAmount == type(uint256).max) {
+            // Accrue latest interest
+            uint256 error = underlyingCToken.accrueInterest();
+            require(error == uint(ICToken.Error.NO_ERROR), "accrue interest failed");
+
+            // Check comptroller permission
+            uint allowed = comptroller.repayBorrowAllowed(
+                address(underlyingCToken),
+                address(this),
+                msg.sender,
+                repayAmount
+            );
+            require(allowed == 0, "Comptroller not allowed");
+
+            // Get the current borrow balance including accrued interest
             uint256 accountBorrows = borrowBalanceStored(msg.sender);
             require(msg.value > 0 && msg.value >= accountBorrows, "Invalid amount");
+
+            // Adjust repayment and surplus
             surplusTokens = msg.value - accountBorrows;
             zapAmount = accountBorrows;
         } else {
@@ -73,11 +92,12 @@ contract SZap {
 
         uint256 accountBorrowsNew = borrowBalanceStored(msg.sender);
 
+        // Return any surplus funds
         if(surplusTokens > 0) {
             payable(msg.sender).transfer(surplusTokens);
         }
 
-        emit RepayBorrow(msg.sender, msg.sender, msg.value, accountBorrowsNew, totalBorrows);
+        emit RepayBorrow(msg.sender, msg.sender, zapAmount, accountBorrowsNew, totalBorrows);
 
         return uint(ICToken.Error.NO_ERROR);
     }
@@ -94,7 +114,7 @@ contract SZap {
     function _performZapIn(uint256 _amount) internal {
         uint256 initialBalance = wS.balanceOf(address(this));
 
-        (bool success, ) = address(wS).call{value: msg.value}(
+        (bool success, ) = address(wS).call{value: _amount}(
             abi.encodeWithSignature("deposit()")
         );
 
